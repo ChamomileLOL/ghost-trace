@@ -51,6 +51,11 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(5001, () => {
-  console.log('🚀 SERVER RUNNING ON PORT 5001');
+// --- THE TRAP: DYNAMIC PORT ASSIGNMENT ---
+// Render gives us process.env.PORT (10000). 
+// If we are on localhost, we use 5001.
+const PORT = process.env.PORT || 5001;
+
+server.listen(PORT, () => {
+  console.log(`🚀 SERVER RUNNING ON PORT ${PORT}`);
 });
