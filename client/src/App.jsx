@@ -1,87 +1,85 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-// Connect to your local backend
-const socket = io.connect("https://ghost-trace.onrender.com");
+// TRAP: Your Render Backend URL
+const socket = io.connect("https://ghost-trace-backend.onrender.com");
 
 function App() {
   const [ghosts, setGhosts] = useState({ x: 0, y: 0 });
   const [myPos, setMyPos] = useState({ x: 0, y: 0 });
+  const [status, setStatus] = useState("🔴 CONNECTING..."); // Connection Status
 
   useEffect(() => {
-    // --- THE TRAP: DOM EVENT LISTENER (Syllabus: DOM Manipulation) ---
-    const handleMouseMove = (e) => {
-      const { clientX, clientY } = e;
-      setMyPos({ x: clientX, y: clientY });
+    // 1. Connection Monitoring (So you know when Server Wakes Up)
+    socket.on('connect', () => setStatus("🟢 ONLINE (GHOST ACTIVE)"));
+    socket.on('disconnect', () => setStatus("🔴 DISCONNECTED"));
 
-      // Send my position to the server
-      socket.emit('mouse_move', { x: clientX, y: clientY });
+    // 2. Universal Tracker (Mouse + Touch)
+    const handleMove = (x, y) => {
+      setMyPos({ x, y });
+      socket.emit('mouse_move', { x, y });
     };
 
-    // --- THE TRAP: SOCKET LISTENER (Syllabus: Async Data Handling) ---
+    // Mouse Handler
+    const handleMouseMove = (e) => handleMove(e.clientX, e.clientY);
+
+    // Touch Handler (For Phones)
+    const handleTouchMove = (e) => {
+      // Prevent scrolling while drawing
+      // e.preventDefault(); 
+      const touch = e.touches[0];
+      handleMove(touch.clientX, touch.clientY);
+    };
+
     socket.on('ghost_move', (data) => {
       setGhosts(data);
     });
 
+    // Attach Listeners
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
       socket.off('ghost_move');
+      socket.off('connect');
+      socket.off('disconnect');
     };
   }, []);
 
   return (
     <div style={{
-      height: '100vh',
-      width: '100vw',
-      background: '#0d0d0d', // Dark Mode
-      color: 'white',
-      overflow: 'hidden',
-      cursor: 'none' // Hide the real cursor for effect
+      height: '100vh', width: '100vw', background: '#0d0d0d', color: 'white', overflow: 'hidden',
+      touchAction: 'none' // DISAABLES SCROLLING ON PHONE (Important!)
     }}>
-
-      {/* THE HUD (Heads Up Display) */}
-      <div style={{ position: 'absolute', top: '20px', left: '20px', fontFamily: 'monospace' }}>
-        <h1 style={{ margin: 0, fontSize: '24px' }}>GHOST-TRACE <span style={{color:'red', animation: 'blink 1s infinite'}}>● REC</span></h1>
-        <p style={{ color: '#888' }}>
-          Your Pos: {myPos.x}, {myPos.y} <br/>
-          Ghost Pos: {ghosts.x}, {ghosts.y}
+      
+      {/* STATUS HUD */}
+      <div style={{ position: 'absolute', top: '20px', left: '20px', fontFamily: 'monospace', zIndex: 100 }}>
+        <h1 style={{ margin: 0, fontSize: '20px' }}>GHOST-TRACE</h1>
+        <p style={{ fontSize: '12px', fontWeight: 'bold' }}>{status}</p>
+        <p style={{ color: '#888', fontSize: '10px' }}>
+          My: {Math.round(myPos.x)}, {Math.round(myPos.y)} <br/>
+          Ghost: {Math.round(ghosts.x)}, {Math.round(ghosts.y)}
         </p>
       </div>
 
-      {/* MY CURSOR (Green Ring) */}
+      {/* MY CURSOR (Green) */}
       <div style={{
-        position: 'absolute',
-        left: myPos.x,
-        top: myPos.y,
-        width: '40px',
-        height: '40px',
-        border: '2px solid #0f0',
-        borderRadius: '50%',
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
-        boxShadow: '0 0 15px #0f0'
+        position: 'absolute', left: myPos.x, top: myPos.y,
+        width: '30px', height: '30px',
+        border: '2px solid #0f0', borderRadius: '50%',
+        transform: 'translate(-50%, -50%)', pointerEvents: 'none'
       }} />
 
-      {/* GHOST CURSOR (Red Filled Circle) */}
+      {/* GHOST CURSOR (Red) */}
       <div style={{
-        position: 'absolute',
-        left: ghosts.x,
-        top: ghosts.y,
-        width: '20px',
-        height: '20px',
-        background: 'red',
-        borderRadius: '50%',
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
+        position: 'absolute', left: ghosts.x, top: ghosts.y,
+        width: '20px', height: '20px', background: 'red', borderRadius: '50%',
+        transform: 'translate(-50%, -50%)', pointerEvents: 'none',
         boxShadow: '0 0 20px red',
-        transition: 'left 0.1s linear, top 0.1s linear' // Smooth interpolation
+        transition: 'all 0.1s linear'
       }} />
-
-      <style>{`
-        @keyframes blink { 50% { opacity: 0; } }
-      `}</style>
     </div>
   );
 }
