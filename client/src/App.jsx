@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
 // TRAP: Your Render Backend URL
-const socket = io.connect("https://ghost-trace-backend.onrender.com");
+const socket = io.connect("https://ghost-trace.onrender.com");
 
 function App() {
   const [ghosts, setGhosts] = useState({ x: 0, y: 0 });
